@@ -24,9 +24,11 @@ class PhpGenerator
     public function __construct(
         bool $useTypeHinting = true,
         bool $useFluentSetters = false,
-        ?string $namespace = null
+        ?string $namespace = null,
+        bool $excludeGettersAndSetters = false
     ) {
-        $this->factory = new ClassFactory($useTypeHinting, $useFluentSetters, $namespace);
+        $this->factory = new ClassFactory($useTypeHinting, $useFluentSetters, 
+            $namespace, $excludeGettersAndSetters);
     }
 
     /**

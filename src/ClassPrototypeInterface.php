@@ -17,7 +17,7 @@ interface ClassPrototypeInterface
      * @param string $methodName
      * @param string $dataType
      */
-    public function addMethod(string $methodName, string $dataType): void;
+    public function addMethod(string $methodName, string $dataType, $example): void;
 
     /**
      * Check if method exists on class

@@ -30,6 +30,11 @@ class ClassPrototype implements ClassPrototypeInterface
     private $namespace;
 
     /**
+     * @var bool
+     */
+    private $excludeGettersAndSetters;
+
+    /**
      * ClassPrototype constructor.
      *
      * @param string      $className
@@ -41,12 +46,14 @@ class ClassPrototype implements ClassPrototypeInterface
         string $className,
         bool $useTypeHinting,
         bool $useFluentSetters = false,
-        ?string $namespace = null
+        ?string $namespace = null,
+        bool $excludeGettersAndSetters = false
     ) {
         $this->className = $className;
         $this->useTypeHinting = $useTypeHinting;
         $this->useFluentSetters = $useFluentSetters;
         $this->namespace = $namespace;
+        $this->excludeGettersAndSetters = $excludeGettersAndSetters;
     }
 
     /**
@@ -60,12 +67,16 @@ class ClassPrototype implements ClassPrototypeInterface
     /**
      * {@inheritDoc}
      */
-    public function addMethod(string $methodName, string $dataType): void
+    public function addMethod(string $methodName, string $dataType, $example): void
     {
+        if($dataType === "boolean"){$example = null;}
+        if(is_object($example)){$example = null;}
+        if(is_array($example)){$example = null;}
         if (!$this->hasMethod($methodName)) {
             $this->methods[] = [
                 'methodName' => $methodName,
-                'dataType' => $dataType
+                'dataType' => $dataType,
+                'example' => $example
             ];
         }
     }
@@ -91,12 +102,16 @@ class ClassPrototype implements ClassPrototypeInterface
     {
         $propertyName = lcfirst(StringUtil::snakeKebabToCamelCase($method['methodName']));
         $dataType = $this->getDataType($method['dataType']);
+        $ex = '';
+        if(!empty($method['example'])){
+            $ex = '
+     * @example '.$method['example'];
+        }
         return <<<EOL
     /**
-     * @var $dataType
+     * @var $dataType$ex
      */
-    private \$$propertyName;
-
+    public \$$propertyName;
 
 EOL;
     }
@@ -112,9 +127,11 @@ EOL;
         $getterPrefix = $this->getGetterPrefix($method['dataType']);
 
         if ($this->useTypeHinting && $this->useFluentSetters) {
-            return $this->printPhp7FluentSettersMethod($dataType, $getterPrefix, $methodName, $propertyName);
+            return $this->printPhp7FluentSettersMethod($dataType, $getterPrefix,
+                $methodName, $propertyName, $method['example'] ?? null);
         } elseif ($this->useTypeHinting && !$this->useFluentSetters) {
-            return $this->printPhp7Method($dataType, $getterPrefix, $methodName, $propertyName);
+            return $this->printPhp7Method($dataType, $getterPrefix, $methodName,
+                $propertyName, $method['example'] ?? null);
         } elseif (!$this->useTypeHinting && $this->useFluentSetters) {
             return $this->printPhp5FluentSettersMethod($dataType, $getterPrefix, $methodName, $propertyName);
         } else {
@@ -134,12 +151,18 @@ EOL;
         string $dataType,
         string $getterPrefix,
         string $methodName,
-        string $propertyName
+        string $propertyName,
+        $example
     ): string {
+        $ex = '';
+        if(!empty($example)){
+            $ex = '
+     * @example '.$example;
+        }
         return <<<EOL
 
     /**
-     * @return $dataType|null
+     * @return $dataType|null$ex
      */
     public function $getterPrefix$methodName(): ?$dataType
     {
@@ -169,12 +192,18 @@ EOL;
         string $dataType,
         string $getterPrefix,
         string $methodName,
-        string $propertyName
+        string $propertyName,
+        $example
     ): string {
+        $ex = '';
+        if(!empty($example)){
+            $ex = '
+     * @example '.$example;
+        }
         return <<<EOL
 
     /**
-     * @return $dataType|null
+     * @return $dataType|null$ex
      */
     public function $getterPrefix$methodName(): ?$dataType
     {
@@ -182,7 +211,7 @@ EOL;
     }
 
     /**
-     * @param $dataType|null \$$propertyName
+     * @param $dataType|null \$$propertyName$ex
      *
      * @return $this->className
      */
@@ -320,7 +349,7 @@ EOL;
         }
 
         $str .= <<<EOL
-class $this->className
+class $this->className extends \Quantimodo\Api\Model\DataSource\Connectors\ResponseObjects\BaseResponseObject
 {
 
 EOL
@@ -330,7 +359,9 @@ EOL
         }
 
         foreach ($this->methods as $method) {
-            $str .= $this->printMethod($method);
+            if(!$this->excludeGettersAndSetters){
+                $str .= $this->printMethod($method);
+            }
         }
 
         $str .= <<<EOL

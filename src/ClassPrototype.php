@@ -100,7 +100,8 @@ class ClassPrototype implements ClassPrototypeInterface
      */
     public function printProperty(array $method): string
     {
-        $propertyName = lcfirst(StringUtil::snakeKebabToCamelCase($method['methodName']));
+        //$propertyName = lcfirst(StringUtil::snakeKebabToCamelCase($method['methodName']));
+        $propertyName = str_replace('-', '_', $method['methodName']);
         $dataType = $this->getDataType($method['dataType']);
         $ex = '';
         if(!empty($method['example'])){
